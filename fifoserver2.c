@@ -4,33 +4,31 @@
 #include <unistd.h>
 #include <linux/stat.h>
 
-#define		FIFO_FILE	"myfifo"
+#define		FIFO_START	"myfifo"
 #define		FIFO_FINAL	"myfifo2"
-#define		SZBUF		80
 #define		SZ 			2
-#define		QUIT		"bye"
 
 int main(void) {
 	FILE* fp;
 	FILE* fp2;
-	char readbuf[SZBUF];
+
 	int  numbuf[SZ];
 	int	 res;
 
 	
 	/*create the fifo*/
 	umask(0);
-	mknod(FIFO_FILE, S_IFIFO|0666, 0);
+	mknod(FIFO_START, S_IFIFO|0666, 0);
 	
-	printf("Running server... To quit, send via the client the msg 'bye'.\n");
+	printf("Esperando os numeros...\n");
 	
 	while(1) {
 
-		/* Lê um vetor do FIFO_FILE */
-		fp = fopen(FIFO_FILE,"r");
+		/* Lê um vetor do FIFO_START */
+		fp = fopen(FIFO_START,"r");
 		fread(numbuf, sizeof(numbuf),1,fp);
 
-		printf("Received numbers: %d %d\n",numbuf[0],numbuf[1]);
+		printf("numeros recebidos: %d %d\n",numbuf[0],numbuf[1]);
 
 		fclose(fp);
 
