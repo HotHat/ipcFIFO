@@ -1,4 +1,4 @@
 ipcFIFO
 =======
 
-example of unix fifos for interprocess communication
+Some examples of message queue (FIFO) for interprocess communication on UNIX
