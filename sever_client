@@ -1,0 +1,146 @@
+///////server////////////////
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+
+#define FILE_MODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH )
+#define MAXLEN  4096
+#define FIFO_SERV "/tmp/fifo_serv"
+
+int main(int argc, char *argv[])
+{
+
+  int readfd, writefd;
+  char fifoname[MAXLEN + 1];
+  char buff[MAXLEN + 1];
+  ssize_t n;
+  char * ptr;
+  int pid;
+  int fd;
+
+  if ((mkfifo(FIFO_SERV, FILE_MODE) < 0) && (errno != EEXIST))
+    {
+      strerror(errno);
+      exit(2);
+    }
+
+  //  puts("After make fifos!");
+
+  readfd =  open(FIFO_SERV, O_RDONLY);
+
+
+  while (1)
+    {
+      if ((n = read(readfd, buff, MAXLEN)) > 0)
+	{
+	  if (buff[n - 1] == '\n')
+	    n--;
+	  buff[n] = '\0';  // delete the \n character in the tail
+      
+	  puts(buff);
+	  ptr = strchr(buff, ' ');
+	  if (ptr == NULL)
+	    {
+	      printf("bogus request: %s", buff);
+	      continue;
+	    }
+
+	  *ptr++ = '\0';
+	  pid = atoi(buff);
+
+
+	  snprintf(fifoname, MAXLEN, "/tmp/fifo.%d", pid);
+
+	  /////////////////////////////////////////
+	  printf("%s ---> %s\n", ptr, fifoname);      
+	  writefd = open(fifoname, O_WRONLY);
+	  if (writefd < 0)
+	    {
+	      printf("cannot open: %s", fifoname);
+	      continue;
+	    }
+
+	  fd = open(ptr, O_RDONLY);
+	  if (fd < 0)
+	    {
+	      snprintf(buff, MAXLEN, "cann't open: %s\n", strerror(errno));
+	      write(writefd, buff, strlen(buff));
+	      close(writefd);
+	    }
+	  else
+	    {
+	      puts("what happen!");
+	      while (( n = read(fd, buff, MAXLEN)) > 0)
+		{
+		  //  printf("%d-->%s", n, buff);
+		  write(writefd, buff, n);
+		}
+	      close(fd);
+	      close(writefd);
+	    }
+
+      
+	}
+    }
+
+  return 0; 
+}
+
+////////////////client//////////////////////////
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+
+#define FILE_MODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH )
+#define MAXLEN  4096
+#define FIFO_SERV "/tmp/fifo_serv"
+
+int main(int argc, char *argv[])
+{
+
+  int readfd, writefd;
+  char filename[MAXLEN + 1];
+  char buff[MAXLEN + 1];
+  char fifoname[MAXLEN + 1];
+  ssize_t n;
+  char * ptr;
+  pid_t pid;
+
+
+  pid = getpid(); // get user pid
+
+  snprintf(fifoname, MAXLEN, "/tmp/fifo.%ld", (long)pid);
+  fgets(filename, MAXLEN, stdin);
+
+  if ((mkfifo(fifoname, FILE_MODE) < 0) && (errno != EEXIST))
+    {
+      strerror(errno);
+      exit(2);
+    }
+  snprintf(buff, MAXLEN, "%ld %s", (long)pid, filename);
+
+  printf("%s\n", buff);
+  writefd = open(FIFO_SERV, O_WRONLY);
+  write(writefd, buff, strlen(buff));
+
+  readfd = open(fifoname, O_RDONLY);
+
+  puts("open read fifo");
+  while ((n = read(readfd, buff, MAXLEN)) > 0)
+    write(STDOUT_FILENO, buff, n);
+
+  close(readfd);
+  unlink(fifoname);
+
+  return 0;
+}
